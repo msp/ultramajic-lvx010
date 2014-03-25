@@ -14,6 +14,7 @@ require([], function(){
 	var scene, camera, renderer, stats, controls;
 	var geometry, material, mesh;
 	var shape, cover, ball, box;
+	var mirrorSphere, mirrorSphereCamera;
 	var container = document.body;
 
 	// set the view size in pixels (custom or according to window size)
@@ -24,6 +25,7 @@ require([], function(){
 
 	initScene();
 	initCamera();
+
 	initRenderer();
 	initLighting();
 
@@ -34,6 +36,7 @@ require([], function(){
 	initControls();
 	
  	makeFloor();
+ 	makeSky();
 
 	makePlinth( 300,  300);
 	makePlinth(-300,  300);
@@ -114,8 +117,18 @@ require([], function(){
 		//   (don't forget to add (at least one) light!)
 		var sphereMaterial = new THREE.MeshLambertMaterial( {color: 0x8888ff} ); 
 		var sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-		sphere.position.set(100, 30, -50);
+		sphere.position.set(200, 30, -60);
 		scene.add(sphere);
+
+		var sphereGeom =  new THREE.SphereGeometry( 50, 32, 16 ); // radius, segmentsWidth, segmentsHeight
+		mirrorSphereCamera = new THREE.CubeCamera( 0.1, 5000, 512 );
+		// mirrorCubeCamera.renderTarget.minFilter = THREE.LinearMipMapLinearFilter;
+		scene.add( mirrorSphereCamera );
+		var mirrorSphereMaterial = new THREE.MeshBasicMaterial( { envMap: mirrorSphereCamera.renderTarget } );
+		mirrorSphere = new THREE.Mesh( sphereGeom, mirrorSphereMaterial );
+		mirrorSphere.position.set(75,50,0);
+		mirrorSphereCamera.position = mirrorSphere.position;
+		scene.add(mirrorSphere);
 		
 		// Create an array of materials to be used in a cube, one for each side
 		var cubeMaterialArray = [];
@@ -137,9 +150,9 @@ require([], function(){
 		scene.add( cube );		
 
 		// create a set of coordinate axes to help orient user
-		//    specify length in pixels in each direction
-		var axes = new THREE.AxisHelper(100);
-		scene.add( axes );
+		//  specify length in pixels in each direction
+		// var axes = new THREE.AxisHelper(100);
+		// scene.add( axes );
 
 		// msp
 		// geometry = new THREE.IcosahedronGeometry(200, 1);
@@ -198,6 +211,36 @@ require([], function(){
 		scene.add(floor);
 	}
 
+	function makeSky() {
+
+		var materialArray = [];
+		materialArray.push(new THREE.MeshBasicMaterial( { map: THREE.ImageUtils.loadTexture( '/images/DarkSea-xpos.jpg' ) }));
+		materialArray.push(new THREE.MeshBasicMaterial( { map: THREE.ImageUtils.loadTexture( '/images/DarkSea-xneg.jpg' ) }));
+		materialArray.push(new THREE.MeshBasicMaterial( { map: THREE.ImageUtils.loadTexture( '/images/DarkSea-ypos.jpg' ) }));
+		materialArray.push(new THREE.MeshBasicMaterial( { map: THREE.ImageUtils.loadTexture( '/images/DarkSea-yneg.jpg' ) }));
+		materialArray.push(new THREE.MeshBasicMaterial( { map: THREE.ImageUtils.loadTexture( '/images/DarkSea-zpos.jpg' ) }));
+		materialArray.push(new THREE.MeshBasicMaterial( { map: THREE.ImageUtils.loadTexture( '/images/DarkSea-zneg.jpg' ) }));
+		for (var i = 0; i < 6; i++)
+		   materialArray[i].side = THREE.BackSide;
+		var skyboxMaterial = new THREE.MeshFaceMaterial( materialArray );
+		var skyboxGeom = new THREE.CubeGeometry( 5000, 5000, 5000, 1, 1, 1 );
+		var skybox = new THREE.Mesh( skyboxGeom, skyboxMaterial );
+		scene.add( skybox );	
+
+		// // recommend either a skybox or fog effect (can't use both at the same time) 
+		// // without one of these, the scene's background color is determined by webpage background
+
+		// // make sure the camera's "far" value is large enough so that it will render the skyBox!
+		// var skyBoxGeometry = new THREE.CubeGeometry( 10000, 10000, 10000 );
+		// // BackSide: render faces from inside of the cube, instead of from outside (default).
+		// var skyBoxMaterial = new THREE.MeshBasicMaterial( { color: 0x9999ff, side: THREE.BackSide } );
+		// var skyBox = new THREE.Mesh( skyBoxGeometry, skyBoxMaterial );
+		// // scene.add(skyBox);
+		
+		// // fog must be added to scene before first render
+		// scene.fog = new THREE.FogExp2( 0x9999ff, 0.00025 );
+	}
+
 	function makePlinth(x, z) { 
 		var base = new THREE.Mesh(new THREE.CubeGeometry(50, 200, 50), new THREE.MeshLambertMaterial( {color: 0x8888ff} ) );
 		base.position.set(x, 50, z);
@@ -223,7 +266,20 @@ require([], function(){
 		stats.update();
 	}
 
-	function render() {	
+	function render() {
+		// move the CubeCamera to the position of the object
+		//    that has a reflective surface, "take a picture" in each direction
+		//    and apply it to the surface.
+		// need to hide surface before and after so that it does not
+		//    "get in the way" of the camera
+		// mirrorCube.visible = false;
+		// mirrorCubeCamera.updateCubeMap( renderer, scene );
+		// mirrorCube.visible = true;
+
+		mirrorSphere.visible = false;
+		mirrorSphereCamera.updateCubeMap( renderer, scene );
+		mirrorSphere.visible = true;
+
 		renderer.render(scene, camera);
 	}
 
